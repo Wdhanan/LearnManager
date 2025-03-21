@@ -5,7 +5,7 @@ import re
 from openai import OpenAI
 from dotenv import load_dotenv
 import streamlit as st
-from utils.note_manager import load_notes
+from utils.note_manager import load_notes, load_shared_notes
 from utils.stats_manager import save_stats
 
 # Configure logging
@@ -148,8 +148,11 @@ def evaluate_answer(question, user_answer, correct_answer):
 def quiz_mode(user_id):
     st.header("Quiz-Modus")
     notes = load_notes(user_id)
-    if notes:
-        note_titles = [note[1] for note in notes]
+    shared_notes = load_shared_notes(user_id)
+    all_notes = notes + shared_notes  # Kombiniere eigene und geteilte Notizen
+
+    if all_notes:
+        note_titles = [note[1] for note in all_notes]
         selected_note = st.selectbox("Wähle eine Notiz", note_titles, key="quiz_select_note")
         
         # Zurücksetzen der Fragen und Antworten, wenn eine neue Notiz ausgewählt wird
@@ -157,20 +160,22 @@ def quiz_mode(user_id):
             st.session_state["selected_note"] = selected_note
             st.session_state["questions"] = None
             st.session_state["answers"] = {}
+            st.session_state["quiz_finished"] = False  # Zurücksetzen des Quiz-Status
 
         if st.button("Fragen generieren", key="generate_questions_button"):
-            note_content = next(note[2] for note in notes if note[1] == selected_note)
+            note_content = next(note[2] for note in all_notes if note[1] == selected_note)
             questions = generate_questions(selected_note, note_content)
             
             if questions:
                 st.session_state["questions"] = questions  # Speichere die Fragen im session_state
                 st.session_state["answers"] = {}  # Initialisiere die Antworten
+                st.session_state["quiz_finished"] = False  # Quiz-Status zurücksetzen
 
         if "questions" in st.session_state and st.session_state["questions"]:
             st.write("Generierte Fragen:")
             questions = st.session_state["questions"]
-            all_answered = True  # Überprüft, ob alle Fragen beantwortet wurden
-            total_score = 0  # Gesamtpunktzahl für das Quiz
+            total_score = 0  # Gesamtpunktzahl für diese Quiz-Session
+            all_answered = True  # Prüfe, ob alle Fragen beantwortet wurden
 
             for i, question in enumerate(questions, start=1):
                 st.write(f"**Frage {i}:** {question['frage']}")
@@ -189,35 +194,34 @@ def quiz_mode(user_id):
                 
                 # Wenn der Benutzer eine Antwort eingibt, speichere sie im session_state
                 if user_answer:
-                    st.session_state[answer_key] = user_answer
+                    st.session_state[answer_key] = user_answer  # Speichere die Antwort
                 else:
-                    all_answered = False  # Es gibt noch unbeantwortete Fragen
+                    all_answered = False  # Nicht alle Fragen wurden beantwortet
 
-            # Button zum Anzeigen der Bewertung
-            if all_answered and st.button("Quiz abschließen", key="finish_quiz_button"):
-                st.write("### Bewertung:")
-                for i, question in enumerate(questions, start=1):
-                    answer_key = f"user_answer_{i}"
-                    user_answer = st.session_state[answer_key]
-                    evaluation = evaluate_answer(question['frage'], user_answer, question['antwort'])
-                    st.write(f"**Frage {i}:** {question['frage']}")
-                    st.write(f"Deine Antwort: {user_answer}")
-                    st.write(f"Bewertung: {evaluation['score']}/5")
-                    total_score += evaluation["score"]  # Addiere die Punktzahl zur Gesamtpunktzahl
+            # "Quiz abschließen"-Button anzeigen, wenn alle Fragen beantwortet wurden
+            if all_answered:
+                if st.button("Quiz abschließen", key="finish_quiz_button"):
+                    # Bewertung berechnen und anzeigen
+                    for i, question in enumerate(questions, start=1):
+                        answer_key = f"user_answer_{i}"
+                        user_answer = st.session_state[answer_key]
+                        evaluation = evaluate_answer(question['frage'], user_answer, question['antwort'])
+                        st.write(f"**Frage {i}:** {question['frage']}")
+                        st.write(f"Deine Antwort: {user_answer}")
+                        st.write(f"Bewertung: {evaluation['score']}/5")
+                        total_score += evaluation["score"]  # Addiere die Punktzahl zur Gesamtpunktzahl
 
-                # Gesamtpunktzahl anzeigen
-                st.write(f"### Gesamtpunktzahl: {total_score}/{len(questions) * 5}")
-                # Statistik speichern
-                note_id = next(note[0] for note in notes if note[1] == selected_note)
-                save_stats(st.session_state["user_id"], note_id, total_score)
+                    st.write(f"**Gesamtpunktzahl:** {total_score}/25")
 
-                # Antworten zurücksetzen
-                for i in range(1, len(questions) + 1):
-                    answer_key = f"user_answer_{i}"
-                    st.session_state[answer_key] = ""  # Leere die Antworten
+                    # Speichere die Statistik, wenn alle Fragen beantwortet wurden
+                    note_id = next(note[0] for note in all_notes if note[1] == selected_note)
+                    save_stats(user_id, note_id, total_score)
+                    st.success("Quiz abgeschlossen! Deine Statistik wurde gespeichert.")
+                    st.session_state["quiz_finished"] = True  # Markiere das Quiz als abgeschlossen
 
-                # Optional: Fragen zurücksetzen
-                st.session_state["questions"] = None
-                st.success("Quiz abgeschlossen! Die Antworten wurden zurückgesetzt.")
+                    # Leere die Antwortfelder nach dem Abschluss des Quiz
+                    for i in range(1, len(questions) + 1):
+                        answer_key = f"user_answer_{i}"
+                        st.session_state[answer_key] = ""
     else:
         st.warning("Keine Notizen gefunden. Bitte erstelle zuerst eine Notiz.")

@@ -1,6 +1,6 @@
 import streamlit as st
 from dotenv import load_dotenv
-from utils.auth import register, login, logout
+from utils.auth import register, login, logout, load_all_users
 from utils.note_manager import load_shared_notes, save_note, load_notes, delete_note, share_note
 from utils.question_generator import quiz_mode
 from utils.stats_manager import load_stats
@@ -127,10 +127,22 @@ else:
                 st.write(note[2])
                 if st.button(f"Notiz löschen {note[0]}", key=f"delete_note_{note[0]}"):
                     delete_note(note[0])
-                # Notiz teilen
-                shared_with_username = st.text_input(f"Notiz mit Benutzer teilen (Notiz {note[0]})", key=f"share_note_{note[0]}")
-                if st.button(f"Notiz {note[0]} teilen", key=f"share_button_{note[0]}"):
-                    share_note(note[0], st.session_state["user_id"], shared_with_username)
+
+                # Liste der Benutzer zum Teilen der Notiz
+                all_users = load_all_users()
+                if all_users:
+                    shared_with_username = st.selectbox(
+                        f"Notiz mit Benutzer teilen (Notiz {note[0]})",
+                        all_users,
+                        key=f"share_note_{note[0]}"
+                    )
+                    if st.button(f"Notiz {note[0]} teilen", key=f"share_button_{note[0]}"):
+                        if shared_with_username != st.session_state["username"]:  # Verhindere, dass man sich selbst teilt
+                            share_note(note[0], st.session_state["user_id"], shared_with_username)
+                        else:
+                            st.error("Du kannst keine Notiz mit dir selbst teilen.")
+                else:
+                    st.warning("Keine anderen Benutzer gefunden.")
 
             st.write("Mit dir geteilte Notizen:")
             for shared_note in shared_notes:

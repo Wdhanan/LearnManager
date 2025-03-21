@@ -60,3 +60,21 @@ def logout():
         st.session_state["username"] = None
         st.rerun()
         st.success("Erfolgreich ausgeloggt.")
+
+def load_all_users():
+    """
+    Lädt alle registrierten Benutzer aus der Datenbank.
+    :return: Liste der Benutzernamen
+    """
+    conn = create_connection()
+    if conn is not None:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT username FROM users")
+            users = cursor.fetchall()
+            return [user[0] for user in users]  # Extrahiere die Benutzernamen
+        except Error as e:
+            st.error(f"Fehler beim Laden der Benutzer: {e}")
+        finally:
+            conn.close()
+    return []
