@@ -3,27 +3,27 @@ import sqlite3
 from sqlite3 import Error
 from utils.database import create_connection
 
-def save_note(user_id):
-    st.header("📝 Notizen")
-    title = st.text_input("Titel der Notiz", key="note_title")
-    content = st.text_area("Inhalt der Notiz", key="note_content")
-    if st.button("Notiz speichern", key="save_note_button"):
-        if title and content:
-            conn = create_connection()
-            if conn is not None:
-                try:
-                    cursor = conn.cursor()
-                    cursor.execute("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)", (user_id, title, content))
-                    conn.commit()
-                    st.success("Notiz gespeichert!")
-                    # Lade die Seite neu, um die Eingabefelder zurückzusetzen
-                    st.rerun()
-                except Error as e:
-                    st.error(f"Fehler beim Speichern der Notiz: {e}")
-                finally:
-                    conn.close()
-        else:
-            st.error("Titel und Inhalt dürfen nicht leer sein.")
+def save_note(user_id, title, content):
+    """
+    Speichert eine neue Notiz in der Datenbank.
+    :param user_id: Die ID des Benutzers
+    :param title: Der Titel der Notiz
+    :param content: Der Inhalt der Notiz
+    """
+    if title and content:
+        conn = create_connection()
+        if conn is not None:
+            try:
+                cursor = conn.cursor()
+                cursor.execute("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)", (user_id, title, content))
+                conn.commit()
+                st.success("Notiz gespeichert!")
+            except Error as e:
+                st.error(f"Fehler beim Speichern der Notiz: {e}")
+            finally:
+                conn.close()
+    else:
+        st.error("Titel und Inhalt dürfen nicht leer sein.")
 
 def edit_note(note_id, new_title, new_content):
     """
@@ -47,15 +47,15 @@ def edit_note(note_id, new_title, new_content):
 def share_note(note_id, shared_by_user_id, shared_with_username):
     """
     Teilt eine Notiz mit einem anderen Benutzer.
-    :param note_id: Die ID der Notiz
-    :param shared_by_user_id: Die ID des Benutzers, der die Notiz teilt
-    :param shared_with_username: Der Benutzername des Benutzers, mit dem die Notiz geteilt wird
+    :param note_id: ID der Notiz
+    :param shared_by_user_id: ID des Besitzers der Notiz
+    :param shared_with_username: Benutzername des Empfängers
     """
     conn = create_connection()
     if conn is not None:
         try:
             cursor = conn.cursor()
-            # Finde die Benutzer-ID des Empfängers
+            # Hole die Benutzer-ID des Empfängers basierend auf dem Benutzernamen
             cursor.execute("SELECT id FROM users WHERE username = ?", (shared_with_username,))
             shared_with_user = cursor.fetchone()
             if shared_with_user:
@@ -63,7 +63,7 @@ def share_note(note_id, shared_by_user_id, shared_with_username):
                 # Füge die geteilte Notiz in die Datenbank ein
                 cursor.execute(
                     "INSERT INTO shared_notes (note_id, shared_by_user_id, shared_with_user_id) VALUES (?, ?, ?)",
-                    (note_id, shared_by_user_id, shared_with_user_id)
+                    (note_id, shared_by_user_id, shared_with_user_id),
                 )
                 conn.commit()
                 st.success(f"Notiz erfolgreich mit {shared_with_username} geteilt!")

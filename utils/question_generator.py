@@ -104,8 +104,7 @@ def evaluate_answer(question, user_answer, correct_answer):
             f"Bewertungsregeln:\n"
             f"- Kurze Antworten mit den wesentlichen Elementen verdienen eine hohe Punktzahl.\n"
             f"- Wenn die Schlüsselwörter vorhanden sind, sollte die Punktzahl hoch sein (4 oder 5).\n"
-            f"- Die Form der Antwort ist weniger wichtig als der Inhalt.\n"
-            f"- Präzise Antworten sind genauso gut wie detaillierte Antworten.\n\n"
+            f"- Die Form der Antwort ist weniger wichtig als der Inhalt.\n\n"
             f"Gib NUR ein gültiges JSON im folgenden Format zurück: {{\"score\": X}}, wobei X eine Zahl zwischen 0 und 5 ist.\n"
             f"Verwende doppelte Anführungszeichen für den Schlüssel \"score\"."
         )
