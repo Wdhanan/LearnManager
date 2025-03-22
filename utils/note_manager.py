@@ -4,7 +4,7 @@ from sqlite3 import Error
 from utils.database import create_connection
 
 def save_note(user_id):
-    st.header("Notizen")
+    st.header("📝 Notizen")
     title = st.text_input("Titel der Notiz", key="note_title")
     content = st.text_area("Inhalt der Notiz", key="note_content")
     if st.button("Notiz speichern", key="save_note_button"):
@@ -25,6 +25,24 @@ def save_note(user_id):
         else:
             st.error("Titel und Inhalt dürfen nicht leer sein.")
 
+def edit_note(note_id, new_title, new_content):
+    """
+    Bearbeitet eine vorhandene Notiz.
+    :param note_id: Die ID der Notiz
+    :param new_title: Der neue Titel der Notiz
+    :param new_content: Der neue Inhalt der Notiz
+    """
+    conn = create_connection()
+    if conn is not None:
+        try:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE notes SET title = ?, content = ? WHERE id = ?", (new_title, new_content, note_id))
+            conn.commit()
+            st.success("Notiz erfolgreich bearbeitet!")
+        except Error as e:
+            st.error(f"Fehler beim Bearbeiten der Notiz: {e}")
+        finally:
+            conn.close()
 
 def share_note(note_id, shared_by_user_id, shared_with_username):
     """
@@ -56,7 +74,6 @@ def share_note(note_id, shared_by_user_id, shared_with_username):
         finally:
             conn.close()
 
-
 def load_shared_notes(user_id):
     """
     Lädt die mit dem Benutzer geteilten Notizen.
@@ -81,7 +98,6 @@ def load_shared_notes(user_id):
         finally:
             conn.close()
     return []
-
 
 def load_notes(user_id):
     conn = create_connection()

@@ -146,7 +146,7 @@ def evaluate_answer(question, user_answer, correct_answer):
         return {"score": 0}
 
 def quiz_mode(user_id):
-    st.header("Quiz-Modus")
+    st.header("Rätsel-Modus")
     notes = load_notes(user_id)
     shared_notes = load_shared_notes(user_id)
     all_notes = notes + shared_notes  # Kombiniere eigene und geteilte Notizen

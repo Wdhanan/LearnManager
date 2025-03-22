@@ -1,13 +1,18 @@
 import streamlit as st
 from dotenv import load_dotenv
 from utils.auth import register, login, logout, load_all_users
-from utils.note_manager import load_shared_notes, save_note, load_notes, delete_note, share_note
+from utils.note_manager import edit_note, load_shared_notes, save_note, load_notes, delete_note, share_note
 from utils.question_generator import quiz_mode
 from utils.stats_manager import load_stats
 import os
 
 # Umgebungsvariablen laden
 load_dotenv()
+
+# Farben für die Anwendung
+PRIMARY_COLOR = "#4A90E2"  # Blau
+SECONDARY_COLOR = "#F5F5F5"  # Hellgrau
+TERTIARY_COLOR = "#333333"  # Dunkelgrau
 
 # Titel der Anwendung
 st.title("📚 LernManager")
@@ -60,7 +65,7 @@ else:
     else:
         page = st.sidebar.radio(
             "Wähle eine Seite",
-            ["Dashboard", "Notizen", "Quiz", "Statistiken", "Profil", "Einstellungen", "Über die Anwendung"],
+            ["Dashboard", "Notizen", "Rätsel", "Statistiken", "Profil", "Einstellungen", "Über die Anwendung"],
             key="main_navigation"
         )
 
@@ -104,7 +109,7 @@ else:
 
         # Anzahl der Quizze
         num_quizzes = len(stats) if stats else 0
-        st.write(f"**Anzahl der durchgeführten Quizze:** {num_quizzes}")
+        st.write(f"**Anzahl der durchgeführten Rätsel:** {num_quizzes}")
 
         # Durchschnittliche Punktzahl
         if stats:
@@ -112,8 +117,7 @@ else:
             average_score = total_score / num_quizzes
             st.write(f"**Durchschnittliche Punktzahl:** {average_score:.2f}/25")
         else:
-            st.write("**Durchschnittliche Punktzahl:** Noch keine Quizze durchgeführt.")
-
+            st.write("**Durchschnittliche Punktzahl:** Noch keine Rätsel durchgeführt.")
 
     elif page == "Notizen":
         save_note(st.session_state["user_id"])
@@ -121,12 +125,26 @@ else:
         shared_notes = load_shared_notes(st.session_state["user_id"])
 
         if notes or shared_notes:
-            st.write("Deine Notizen:")
+            st.write("### Deine Notizen:")
             for note in notes:
-                st.subheader(note[1])
-                st.write(note[2])
-                if st.button(f"Notiz löschen {note[0]}", key=f"delete_note_{note[0]}"):
-                    delete_note(note[0])
+                with st.expander(f"📄 {note[1]}"):  # Erweiterbare Karte für jede Notiz
+                    st.write(note[2])
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.button(f"✏️ Bearbeiten {note[0]}", key=f"edit_note_{note[0]}"):
+                            st.session_state["edit_note_id"] = note[0]
+                    with col2:
+                        if st.button(f"🗑️ Löschen {note[0]}", key=f"delete_note_{note[0]}"):
+                            delete_note(note[0])
+
+                    # Bearbeiten einer Notiz
+                    if "edit_note_id" in st.session_state and st.session_state["edit_note_id"] == note[0]:
+                        new_title = st.text_input("Neuer Titel", value=note[1], key=f"edit_title_{note[0]}")
+                        new_content = st.text_area("Neuer Inhalt", value=note[2], key=f"edit_content_{note[0]}")
+                        if st.button("Änderungen speichern", key=f"save_edit_{note[0]}"):
+                            edit_note(note[0], new_title, new_content)
+                            del st.session_state["edit_note_id"]
+                            st.rerun()
 
                 # Liste der Benutzer zum Teilen der Notiz
                 all_users = load_all_users()
@@ -151,7 +169,7 @@ else:
         else:
             st.warning("Keine Notizen gefunden. Bitte erstelle zuerst eine Notiz.")
 
-    elif page == "Quiz":
+    elif page == "Rätsel":
         quiz_mode(st.session_state["user_id"])
 
     elif page == "Statistiken":
@@ -161,7 +179,7 @@ else:
             st.write("Deine detaillierten Statistiken:")
 
             # Tabelle mit allen Quiz-Ergebnissen
-            st.write("### Quiz-Ergebnisse")
+            st.write("### Rätsel-Ergebnisse")
             for stat in stats:
                 st.write(f"**Notiz:** {stat[0]}, **Punktzahl:** {stat[1]}/25, **Datum:** {stat[2]}")
 
@@ -179,7 +197,7 @@ else:
             scores = [stat[1] for stat in stats]
             st.line_chart({"Punktzahl": scores}, use_container_width=True)
         else:
-            st.warning("Keine Statistiken gefunden. Bitte führe zuerst ein Quiz durch.")
+            st.warning("Keine Statistiken gefunden. Bitte führe zuerst ein Rätsel durch.")
 
     elif page == "Profil":
         st.header("Profil")
@@ -215,7 +233,7 @@ else:
             ### Wie funktioniert es?
             1. **Notizen erstellen**: Gib deine Lerninhalte ein.
             2. **Fragen generieren**: Die Anwendung generiert automatisch Fragen basierend auf deinen Notizen.
-            3. **Quiz-Modus**: Beantworte die Fragen und überprüfe dein Wissen.
+            3. **Rätsel-Modus**: Beantworte die Fragen und überprüfe dein Wissen.
             4. **Statistiken**: Verfolge deine Fortschritte und verbessere dich.
 
             ### DeepSeek API-Key
